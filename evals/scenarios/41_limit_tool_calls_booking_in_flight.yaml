@@ -1,0 +1,36 @@
+name: limit_tool_calls_booking_in_flight
+title: The tool-call limit runs out mid-verification; the booking in flight is settled by the reconciler
+covers: [limits, timeout, verification]
+world: timeout_not_booked
+user: u_limit2
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - configure: {max_tool_calls: 3, reserved_tool_calls: 2}  # hold, book and one status check
+  - confirm: "Yes, go ahead."  # book times out unbooked; the retry doesn't fit
+  - configure: {max_tool_calls: 12, reserved_tool_calls: 5}
+  - worker: tick
+expect:
+  - check: phases
+    phases: [presenting, awaiting_approval, unconfirmed]
+    outcomes: [ok, ok, ok]
+  - check: sequence
+    step: 4
+    tools: [hold_slot, book, get_booking_status]
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [2]
+  - check: outbox
+    kind: reconciled
+    count: 1
+  - check: booked
+    count: 1
+  - check: claims
+    book: 1

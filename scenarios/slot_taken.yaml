@@ -1,0 +1,6 @@
+# For evals: someone else takes the slot at book(); the next booking succeeds.
+description: The first book() finds the slot taken; the next one succeeds.
+book_forced: [slot_taken, success]
+quote_drift_probability: 0.0
+cancel_fail_first: 1
+reschedule_conflicts: []

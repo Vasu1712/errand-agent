@@ -1,0 +1,6 @@
+# For evals: the first book() times out and did NOT book; the retry under the same key succeeds.
+description: The first book() times out without booking; the retry books.
+book_forced: [timeout_not_booked, success]
+quote_drift_probability: 0.0
+cancel_fail_first: 1
+reschedule_conflicts: []

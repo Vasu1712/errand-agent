@@ -1,0 +1,33 @@
+name: forgotten_fact_in_old_conversation
+title: Forgotten facts that appear in the long old conversation never reach the model
+covers: [memory, context]
+world: book_succeeds
+user: u_demo
+# 120 old messages; the old address and a spare phone number were forgotten at seeding, and the
+# messages that mentioned them scrubbed.
+seed_demo: true
+model:
+  memory_command:
+    - {op: forget, key: preferred_area}
+  smalltalk:
+    - {text: "You've asked me about plumbing, electrical work, AC servicing and cleaning."}
+  slot_patch:
+    - {service: electrician, when: this_week, no_budget_limit: true}
+decider:
+  intent: [memory_command, smalltalk, book]
+steps:
+  - say: "Forget my preferred area."  # mentioned in many old assistant replies
+  - say: "What have I asked you about before?"  # built from the rolling summary of old messages
+  - say: "Find an electrician this week, no budget limit."
+expect:
+  - check: not_sent
+    after_step: 0
+    values: ["Indiranagar 12th Main", "4410"]
+  - check: not_sent
+    after_step: 1
+    values: [Koramangala, HSR Layout]
+  - check: context  # the forget command itself (step 1) was given the fact it forgot
+    after_step: 1
+    excludes: [preferred_area, previous_address, backup_phone]
+  - check: asked
+    slots: {area: 1}

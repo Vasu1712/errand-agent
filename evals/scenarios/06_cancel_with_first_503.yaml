@@ -1,0 +1,33 @@
+name: cancel_with_first_503
+title: Cancel my cleaning appointment, when the first cancel call returns a 503
+covers: [cancel, tool_failure, idempotency]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # cleaning booked for Sun 8 Nov; AC servicing for Thu 5 Nov
+model:
+  find_booking:
+    - {service: cleaning}
+decider:
+  intent: [cancel]
+  approval: ["yes"]
+steps:
+  - say: "Cancel my cleaning appointment."
+  - confirm: "Yes, go ahead."
+expect:
+  - check: booking
+    select: {service: cleaning}
+    status: cancelled
+  - check: booking
+    select: {service: ac_service}
+    status: confirmed
+  - check: calls
+    tool: cancel
+    count: 2
+    same_key: true
+    failures: [service_unavailable, null]
+  - check: ledger
+    op: cancel
+    statuses: [confirmed]
+    attempts: [2]
+  - check: claims
+    cancel: 1

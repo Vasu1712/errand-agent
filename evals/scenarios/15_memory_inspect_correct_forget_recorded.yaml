@@ -1,0 +1,6 @@
+# memory_inspect_correct_forget replayed from a live run: Qwen reads the memory commands.
+extends: memory_inspect_correct_forget
+name: memory_inspect_correct_forget_recorded
+title: Inspect, correct and forget by chat, replayed from live Qwen and Vega
+covers: [memory, context, live_recording]
+recording: memory_inspect_correct_forget

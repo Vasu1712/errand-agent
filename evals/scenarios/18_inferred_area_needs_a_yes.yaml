@@ -1,0 +1,44 @@
+name: inferred_area_needs_a_yes
+title: A guessed area is confirmed with a yes/no before use, and kept out of context until then
+covers: [memory, context, understanding]
+world: book_succeeds
+user: u_guess
+memories:
+  - {key: preferred_area, value: Indiranagar, source: inferred, evidence: "3 past bookings in Indiranagar"}
+  - {key: earliest_time, value: "09:00", source: explicit}
+model:
+  memory_command:
+    - {op: inspect}
+    - {op: inspect}
+  slot_patch:
+    - {service: plumber, when: this_week, no_budget_limit: true}
+  pick:
+    - {action: none, option_id: null}
+decider:
+  intent: [memory_command, book, memory_command]
+  approval: ["yes"]  # the yes/no question about the guess
+steps:
+  - say: "What do you remember about me?"  # the guess is listed for the user, marked as a guess
+  - say: "Find a plumber this week, no budget limit."
+  - say: "yes"
+  - say: "What do you remember about me now?"
+expect:
+  - check: context
+    step: 1
+    includes: [earliest_time]
+    excludes: [preferred_area]
+  - check: not_sent  # not as a fact, and not through the reply that listed it either
+    before_step: 3
+    values: [Indiranagar]
+  - check: asked
+    slots: {area: 1}
+  - check: memory
+    facts:
+      - {key: preferred_area, value: Indiranagar, source: explicit}
+  - check: search
+    area: Indiranagar
+  - check: context
+    step: 4
+    includes: [preferred_area, earliest_time]
+  - check: phases
+    phases: [idle, confirming_fact, presenting, presenting]

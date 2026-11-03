@@ -1,0 +1,36 @@
+name: relative_dates_on_a_saturday
+title: '"This week", "Saturday" and "mornings" when it is still Friday in UTC: resolved in IST and echoed back'
+covers: [understanding, dates]
+world: book_succeeds
+start: "2026-11-06T20:00:00+00:00"  # Friday 20:00 UTC is Saturday 7 Nov, 01:30 in Bengaluru
+user: u_sat
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, no_budget_limit: true}
+    - {when: weekday, when_weekday: saturday}
+  pick:
+    - {action: change_details, option_id: null}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings, no budget limit."
+  - say: "Actually, just Saturday."  # today, in IST
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: slots
+    at_step: 1
+    values: {date_from: "2026-11-07", date_to: "2026-11-08", time_window: morning}
+  - check: echoed
+    step: 1
+  - check: search
+    step: 2
+    days: ["2026-11-07", "2026-11-07"]
+  - check: echoed
+    step: 2
+  - check: booked
+    day: "2026-11-07"
+    max_hour: 12
+  - check: phases
+    phases: [presenting, presenting, awaiting_approval, done]

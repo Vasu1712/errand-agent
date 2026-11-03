@@ -1,0 +1,23 @@
+# Tool configuration only. Dependencies are pinned in requirements.txt and installed by `make setup`.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+# ruff format keeps code within line-length; long user-facing strings are left whole. The en dashes
+# and look-alike angle brackets in strings are deliberate.
+ignore = ["E501", "RUF001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# langsmith (a langchain-core dependency) registers a pytest plugin that reports to its cloud; the
+# suite must stay offline, so it is never loaded.
+addopts = ["-ra", "--strict-markers", "-m", "not live", "-p", "no:langsmith_plugin"]
+# Warnings fail the suite: a leaked socket or file shows up as a ResourceWarning (docs/bugs.md #1).
+filterwarnings = ["error"]
+markers = [
+    "live: needs a running Ollama or downloads Vega weights; deselected unless run with -m live",
+]

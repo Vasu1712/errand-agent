@@ -1,0 +1,34 @@
+name: reschedule_ac_to_saturday
+title: Move my AC servicing to Saturday
+covers: [reschedule, approval, verification]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # an AC service is booked for Thu 5 Nov, 10:00
+model:
+  find_booking:
+    - {service: ac_service, when: weekday, when_weekday: saturday}
+decider:
+  intent: [reschedule]
+  approval: ["yes"]
+steps:
+  - say: "Move my AC servicing to Saturday."
+  - confirm: "Yes, go ahead."
+expect:
+  - check: booking
+    select: {service: ac_service}
+    status: confirmed
+    day: "2026-11-07"
+    same_provider: true
+    same_price: true
+  - check: phases
+    phases: [awaiting_approval, done]
+  - check: sequence
+    step: 2
+    tools: [list_bookings, reschedule, list_bookings]
+  - check: ledger
+    op: reschedule
+    statuses: [confirmed]
+  - check: approvals
+    consumed: 1
+  - check: claims
+    reschedule: 1

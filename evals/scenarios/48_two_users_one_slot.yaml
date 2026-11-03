@@ -1,0 +1,54 @@
+name: two_users_one_slot
+title: Two users approve the same provider and slot at the same moment; one booking, the other gets fresh options
+covers: [concurrency, approval]
+world: book_succeeds
+world_overrides: {book_forced: [success, success, success]}
+user: u_demo
+seed_demo: true  # u_demo and u_asha share an area and plumbing preferences
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+    - {service: plumber, when: this_week, problem: kitchen sink}
+decider:
+  intent: {default: book}
+  approval: {default: "yes"}
+steps:
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_demo}
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_asha}
+  - together:  # both pick the same first option: the same provider and slot
+      - {say: "1", user: u_demo}
+      - {say: "1", user: u_asha}
+  - together:  # both press Confirm at once; Asha's claim on the slot goes through first
+      - {confirm: "Yes, go ahead.", user: u_demo}
+      - {confirm: "Yes, go ahead.", user: u_asha}
+    gate: {at: [hold_slot], order: [u_asha, u_demo]}
+  - {say: "1", user: u_demo}
+  - {confirm: "Yes, go ahead.", user: u_demo}
+expect:
+  - check: same_proposal
+    step: 2
+    users: [u_demo, u_asha]
+  - check: booked
+    user: u_asha
+    count: 1
+  - check: booked
+    user: u_demo
+    count: 1
+  - check: calls
+    user: u_demo
+    tool: hold_slot
+    count: 2
+    failures: [slot_taken, null]
+  - check: approval_trail
+    user: u_demo
+    trail: [{status: invalidated}, {status: consumed}]
+  - check: approval_trail
+    user: u_asha
+    trail: [{status: consumed}]
+  - check: phases
+    user: u_demo
+    phases: [presenting, awaiting_approval, presenting, awaiting_approval, done]
+  - check: phases
+    user: u_asha
+    phases: [presenting, awaiting_approval, done]

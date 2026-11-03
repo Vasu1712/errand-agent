@@ -1,0 +1,9 @@
+# The spec's default world: book() succeeds 70%, slot_taken 15%, times out 15% (half of those
+# booked anyway); one cancel per booking fails with a 503 first; some hold quotes drift upwards.
+description: Default mock world, outcomes drawn from the seeded split.
+book_weights: {success: 70, slot_taken: 15, timeout_booked: 7.5, timeout_not_booked: 7.5}
+quote_drift_probability: 0.2
+quote_drift_max_pct: 15
+hold_ttl_s: 600
+cancel_fail_first: 1
+reschedule_conflicts: ["10:00"]

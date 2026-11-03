@@ -1,0 +1,35 @@
+name: explicit_beats_inferred
+title: A booking elsewhere doesn't override the stated area; superseded values are never sent
+covers: [memory, context]
+world: book_succeeds
+user: u_explicit
+memories:
+  - {key: preferred_area, value: HSR Layout, source: explicit}
+  - {key: preferred_area, value: Koramangala, source: explicit}  # supersedes HSR Layout
+model:
+  slot_patch:
+    - {service: plumber, area: Indiranagar, when: tomorrow, time_window: morning, no_budget_limit: true}
+    - {service: electrician, when: this_week, no_budget_limit: true}
+decider:
+  intent: [book, book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Indiranagar tomorrow morning, no budget limit."  # at a friend's place
+  - say: "1"
+  - confirm: "Yes, go ahead."  # booking in Indiranagar would suggest a new usual area
+  - say: "Find an electrician this week, no budget limit."
+expect:
+  - check: search
+    step: 1
+    area: Indiranagar
+  - check: search
+    step: 4
+    area: Koramangala
+  - check: memory
+    facts:
+      - {key: preferred_area, value: Koramangala, source: explicit, supersedes: HSR Layout, inferred_rows: 0}
+  - check: not_sent
+    after_step: 0
+    values: [HSR Layout]
+  - check: asked
+    none: true

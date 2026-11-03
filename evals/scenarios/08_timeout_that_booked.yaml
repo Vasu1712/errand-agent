@@ -1,0 +1,31 @@
+name: timeout_that_booked
+title: book() times out, but the booking went through
+covers: [timeout_after_success, verification, idempotency]
+world: timeout_after_success
+user: u_t1
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: sequence  # the source of truth, never a blind retry
+    step: 3
+    tools: [hold_slot, book, get_booking_status]
+  - check: calls
+    tool: book
+    count: 1
+    failures: [timeout]
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [1]
+  - check: booked
+    service: plumber
+  - check: claims
+    book: 1

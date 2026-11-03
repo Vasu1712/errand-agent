@@ -1,0 +1,33 @@
+name: memory_inspect_correct_forget
+title: Inspect, correct and forget stored preferences by chat
+covers: [memory, context]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # preferred area Koramangala (was HSR Layout), earliest time 09:00
+model:
+  memory_command:
+    - {op: inspect}
+    - {op: remember, key: earliest_time, value: "08:00"}
+    - {op: forget, key: preferred_area}
+  slot_patch:
+    - {service: plumber, when: this_week, no_budget_limit: true}
+decider:
+  intent: [memory_command, memory_command, memory_command, book]
+steps:
+  - say: "What do you remember about me?"
+  - say: "Actually, my earliest start time is 8 am."
+  - say: "Forget my preferred area."
+  - say: "Find a plumber this week, no budget limit."  # the area is unknown again, so asked
+expect:
+  - check: memory
+    facts:
+      - {key: preferred_area, status: forgotten}
+      - {key: earliest_time, value: "08:00", source: explicit, supersedes: "09:00"}
+  - check: asked
+    slots: {area: 1}
+  - check: slots
+    values: {earliest_time: "08:00"}
+    sources: {earliest_time: "memory:earliest_time"}
+  - check: not_sent
+    after_step: 3
+    values: [Koramangala, HSR Layout]

@@ -1,0 +1,31 @@
+name: hold_price_above_listing
+title: The hold quotes more than the listing; the new price needs its own yes, and the old one is never booked
+covers: [approval, price_change]
+world: book_succeeds
+world_overrides: {quote_delta_inr: {"*": 100}}
+user: u_quote
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, no_budget_limit: true}
+decider:
+  intent: [book]
+  approval: ["yes", "yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, no budget limit."
+  - say: "1"  # FlowRight Plumbers, listed at ₹700
+  - confirm: "Yes, go ahead."  # approves ₹700; the hold then quotes ₹800
+  - confirm: "Yes, go ahead."  # approves ₹800
+expect:
+  - check: approval_trail
+    trail: [{status: invalidated, price: 700}, {status: consumed, price: 800}]
+  - check: sequence
+    step: 3
+    tools: [hold_slot]
+  - check: sequence
+    step: 4
+    tools: [book, get_booking_status]
+  - check: booked
+    provider: prov_plumber_koramangala_5
+    price: 800
+  - check: phases
+    phases: [presenting, awaiting_approval, awaiting_approval, done]

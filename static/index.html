@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Errand Agent</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --panel: #ffffff; --line: #e2e5ea; --text: #1d2230; --muted: #6b7385;
+      --user: #1f5eff; --agent: #eef1f6; --error: #c62828; --proactive: #fff4dc;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid; grid-template-rows: auto 1fr; background: var(--bg); color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      display: flex; align-items: center; gap: 16px; padding: 10px 18px;
+      background: var(--panel); border-bottom: 1px solid var(--line);
+    }
+    header h1 { font-size: 16px; margin: 0; }
+    header label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+    header select { font: inherit; color: var(--text); padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+    header .meta { color: var(--muted); font-family: var(--mono); font-size: 12px; margin-left: auto; }
+    button {
+      font: inherit; border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+      padding: 6px 12px; cursor: pointer;
+    }
+    button.primary { background: var(--user); border-color: var(--user); color: #fff; }
+    button:disabled { opacity: .5; cursor: default; }
+    main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); min-height: 0; }
+    section { display: flex; flex-direction: column; min-height: 0; }
+    section + section { border-left: 1px solid var(--line); background: var(--panel); }
+    .pane-title {
+      display: flex; align-items: center; gap: 8px; padding: 10px 18px; margin: 0;
+      font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--muted); border-bottom: 1px solid var(--line);
+    }
+    /* One log and one trace list per user inside these; only the picked user's is shown. */
+    #chat-log, #trace-events { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    [hidden] { display: none !important; }
+    .log { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 78%; padding: 9px 12px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .msg.user { align-self: flex-end; background: var(--user); color: #fff; }
+    .msg.agent { align-self: flex-start; background: var(--agent); }
+    .msg.agent.proactive { background: var(--proactive); }
+    .msg.error { align-self: flex-start; background: #fdecec; color: var(--error); }
+    .msg .tag { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+    .msg.loading { align-self: flex-start; background: var(--agent); color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .msg.loading .dots { display: inline-flex; gap: 4px; }
+    .msg.loading .dots span {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .msg.loading .dots span:nth-child(2) { animation-delay: .15s; }
+    .msg.loading .dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+    @media (prefers-reduced-motion: reduce) { .msg.loading .dots span { animation: none; opacity: .6; } }
+    .msg.demo { align-self: center; background: transparent; color: var(--muted); font-size: 12px; }
+    .msg .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .msg .actions button { padding: 4px 10px; font-size: 13px; }
+    .msg .actions button.primary { background: #1f8a4c; border-color: #1f8a4c; color: #fff; }
+    .msg .trace-link {
+      display: block; margin-top: 4px; padding: 0; border: 0; background: none;
+      color: var(--muted); font: 11px var(--mono); text-decoration: underline;
+    }
+    #composer { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel); }
+    #composer textarea {
+      flex: 1; resize: none; font: inherit; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 6px; min-height: 40px; max-height: 160px;
+    }
+    #chat-user, #trace-run { font-family: var(--mono); text-transform: none; letter-spacing: 0; font-weight: 400; }
+    #trace-status { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    #trace-status.live::before { content: "● "; color: #2e9d4f; }
+    .trace { flex: 1; overflow-y: auto; margin: 0; padding: 8px 0; list-style: none; font: 12px/1.5 var(--mono); }
+    .trace .empty { padding: 8px 18px; color: var(--muted); font-family: system-ui, sans-serif; }
+    .trace details { border-bottom: 1px solid var(--line); }
+    .trace summary { display: flex; gap: 10px; padding: 5px 18px; cursor: pointer; }
+    .trace summary:hover { background: var(--bg); }
+    .seq { color: var(--muted); min-width: 2.5em; }
+    .kind { font-weight: 600; min-width: 9.5em; }
+    .kind[data-kind^="run."] { color: #555e70; }
+    .kind[data-kind="model.call"] { color: #7b3fbf; }
+    .kind[data-kind="tool.call"] { color: #1f5eff; }
+    .kind[data-kind="state.transition"] { color: #2e7d32; }
+    .kind[data-kind="approval"] { color: #b26a00; }
+    .kind[data-kind="error"], .kind[data-kind="budget"], .kind[data-kind="injection"] { color: var(--error); }
+    .kind[data-kind="decision"] { color: #0b7a8a; }
+    .kind[data-kind="ledger"] { color: #8a5a00; }
+    .kind[data-kind="context"], .kind[data-kind="memory"] { color: #6b5bd6; }
+    .summary { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .latency { color: var(--muted); }
+    .trace pre { margin: 0; padding: 6px 18px 10px 54px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Errand Agent</h1>
+    <label>User <select id="user-picker" aria-label="Chat as user"></select></label>
+    <span class="meta" id="session-meta">loading users…</span>
+    <button type="button" id="simulate-cancel" title="Demo: the provider of this user's next booking cancels it">Simulate provider cancel</button>
+    <button type="button" id="new-chat">New chat</button>
+  </header>
+  <main>
+    <section aria-label="Chat">
+      <h2 class="pane-title">Chat <span id="chat-user"></span></h2>
+      <div id="chat-log" aria-live="polite"></div>
+      <form id="composer">
+        <textarea id="message" rows="1" placeholder="Find a plumber for my kitchen tap this week, mornings only, under ₹1,500" autofocus></textarea>
+        <button type="submit" class="primary" id="send" disabled>Send</button>
+      </form>
+    </section>
+    <section aria-label="Trace">
+      <h2 class="pane-title">Trace <span id="trace-run"></span><span id="trace-status"></span></h2>
+      <div id="trace-events"></div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+    const POLL_MS = 400;
+    const POLL_LIMIT = 450;  // stop watching a run after about three minutes
+    const OUTBOX_MS = 5000;
+
+    const $ = (id) => document.getElementById(id);
+    // Per user: their session (the server's thread is user_id:session_id), chat log, trace pane,
+    // trace watcher and outbox cursor. Picking a user only changes which ones are shown; every
+    // request names the user it was sent as, so a reply lands in that user's log after a switch.
+    const users = new Map();
+    let current = null;
+
+    function hex(bytes) {
+      return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function newRunId() {
+      const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15);
+      return `run_${stamp}_${hex(4)}`;
+    }
+
+    const newSessionId = () => `ses_${hex(8)}`;
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;  // never innerHTML: replies and traces can carry tool text
+      return node;
+    }
+
+    function addUser(userId, name) {
+      const log = el("div", "log");
+      const trace = el("ol", "trace");
+      trace.append(el("li", "empty", "Send a message to see the run's trace here."));
+      log.hidden = trace.hidden = true;
+      $("chat-log").append(log);
+      $("trace-events").append(trace);
+      const user = {
+        userId, name, sessionId: newSessionId(), phase: null, outboxAfter: 0, pending: false, unread: false,
+        log, trace, watch: { runId: null, timer: null, polls: 0, open: new Set(), status: "", live: false },
+      };
+      users.set(userId, user);
+      const option = el("option");
+      option.value = userId;
+      $("user-picker").append(option);
+      return user;
+    }
+
+    function labelUsers() {
+      for (const option of $("user-picker").options) {
+        const user = users.get(option.value);
+        option.textContent = `${user.name} (${user.userId})${user.unread ? " •" : ""}`;
+      }
+    }
+
+    function pick(userId) {
+      current = users.get(userId);
+      current.unread = false;
+      for (const user of users.values()) user.log.hidden = user.trace.hidden = user !== current;
+      $("user-picker").value = userId;
+      labelUsers();
+      showSession();
+      showTraceHeader(current);
+      $("send").disabled = current.pending;
+      current.log.lastElementChild?.scrollIntoView({ block: "end" });
+      $("message").focus();
+    }
+
+    function showSession() {
+      $("chat-user").textContent = current.userId;
+      $("session-meta").textContent =
+        `thread ${current.userId}:${current.sessionId}${current.phase ? ` · ${current.phase}` : ""}`;
+    }
+
+    // Buttons under an agent message: option picks, or Confirm for a pending approval. Confirm
+    // sends back the approval id and hash the user was shown; the server checks both.
+    function actionsFor(reply) {
+      const actions = (reply.options || []).map((o) => ({ label: o.label, message: String(o.option_id) }));
+      if (reply.approval) actions.push({ label: "Confirm", message: "Yes, go ahead.", confirm: reply.approval, primary: true });
+      return actions;
+    }
+
+    function addMessage(user, role, text, { runId = null, tag = null, actions = [] } = {}) {
+      const bubble = el("div", `msg ${role}`);
+      if (tag) { bubble.classList.add(tag); bubble.append(el("span", "tag", tag)); }
+      bubble.append(document.createTextNode(text));
+      if (actions.length) {
+        const row = el("div", "actions");
+        for (const action of actions) {
+          const button = el("button", action.primary ? "primary" : null, action.label);
+          button.type = "button";
+          button.addEventListener("click", () => { row.remove(); sendText(user, action.message, action.confirm); });
+          row.append(button);
+        }
+        bubble.append(row);
+      }
+      if (runId) {
+        const link = el("button", "trace-link", `trace ${runId}`);
+        link.type = "button";
+        link.addEventListener("click", () => watchRun(user, runId));
+        bubble.append(link);
+      }
+      user.log.append(bubble);
+      if (user === current) {
+        bubble.scrollIntoView({ block: "end" });
+      } else if (role !== "user") {
+        user.unread = true;
+        labelUsers();
+      }
+    }
+
+    // A "thinking" bubble in the sender's own log while their turn runs (searches can take
+    // several seconds against the live models), so the chat never looks stuck.
+    function showLoader(user) {
+      const bubble = el("div", "msg loading");
+      bubble.setAttribute("role", "status");
+      const dots = el("span", "dots");
+      dots.append(el("span"), el("span"), el("span"));
+      bubble.append(dots, el("span", null, "Working on it…"));
+      user.log.append(bubble);
+      if (user === current) bubble.scrollIntoView({ block: "end" });
+      return bubble;
+    }
+
+    function summarize(event) {
+      const d = event.data || {};
+      switch (event.kind) {
+        case "run.start": return [d.kind, d.message].filter(Boolean).join(" · ");
+        case "run.end": return `${d.outcome || ""} · ${d.reply || ""}`;
+        case "model.call": return [d.purpose, d.model, d.input_tokens != null && `${d.input_tokens}→${d.output_tokens} tok`, d.cost_usd != null && `$${d.cost_usd}`].filter(Boolean).join(" · ");
+        case "tool.call": return [d.tool, d.failure && `failed: ${d.failure.code}`, d.error && !d.failure && `error: ${d.error}`].filter(Boolean).join(" · ");
+        case "state.transition": return d.event === "slots" ? `slots ${Object.keys(d.changed || {}).join(", ") || "unchanged"}` : `${d.node}: ${d.from_phase} → ${d.to_phase}${d.goto ? ` ⇒ ${d.goto}` : ""}`;
+        case "decision": return `Vega ${d.question}: ${d.choice} @ ${d.confidence}`;
+        case "approval": return [d.event, d.approval_id, d.reason].filter(Boolean).join(" · ");
+        case "ledger": return [d.event, d.idempotency_key, d.booking_id, d.error].filter(Boolean).join(" · ");
+        case "context": return d.purpose === "load_context" ? `facts ${(d.fact_ids || []).length}` : `${d.purpose}: ${d.total_tokens}/${d.cap} tok, ${(d.fact_ids || []).length} facts, ${(d.message_ids || []).length} turns`;
+        case "injection": return `${d.provider_id} ${d.review_id}: ${d.heuristic || d.vega}`;
+        case "memory": return [d.event, d.key, d.service].filter(Boolean).join(" · ");
+        case "budget": case "error": return [d.node, d.error].filter(Boolean).join(" · ");
+        default: return Object.keys(d).join(", ");
+      }
+    }
+
+    function renderTrace(user, trace) {
+      const list = user.trace;
+      list.replaceChildren();
+      for (const event of trace.events) {
+        const item = el("li");
+        const details = el("details");
+        details.open = user.watch.open.has(event.seq);
+        details.addEventListener("toggle", () => {
+          details.open ? user.watch.open.add(event.seq) : user.watch.open.delete(event.seq);
+        });
+        const summary = el("summary");
+        const kind = el("span", "kind", event.kind);
+        kind.dataset.kind = event.kind;
+        summary.append(
+          el("span", "seq", `#${event.seq}`), kind, el("span", "summary", summarize(event)),
+          el("span", "latency", event.latency_ms != null ? `${event.latency_ms.toFixed(1)} ms` : ""),
+        );
+        details.append(summary, el("pre", null, JSON.stringify({ ts: event.ts, ...event.data }, null, 2)));
+        item.append(details);
+        list.append(item);
+      }
+      if (!trace.events.length) list.append(el("li", "empty", "No events yet."));
+    }
+
+    function showTraceHeader(user) {
+      $("trace-run").textContent = user.watch.runId || "";
+      $("trace-status").textContent = user.watch.status;
+      $("trace-status").classList.toggle("live", user.watch.live);
+    }
+
+    function setTraceStatus(user, status, live) {
+      Object.assign(user.watch, { status, live });
+      if (user === current) showTraceHeader(user);
+    }
+
+    // Returns true once there is nothing more to wait for. Traces are the user's own: the server
+    // answers 404 for another user's run, the same as for a run that hasn't started yet.
+    async function refreshTrace(user, runId) {
+      const params = new URLSearchParams({ user_id: user.userId });
+      const res = await fetch(`/trace/${encodeURIComponent(runId)}?${params}`);
+      if (user.watch.runId !== runId) return true;
+      if (res.status === 404) { setTraceStatus(user, "waiting for run…", true); return false; }
+      if (!res.ok) { setTraceStatus(user, `trace unavailable (${res.status})`, false); return true; }
+      const trace = await res.json();
+      renderTrace(user, trace);
+      setTraceStatus(user, trace.complete ? "complete" : "live", !trace.complete);
+      return trace.complete;
+    }
+
+    function watchRun(user, runId) {
+      clearInterval(user.watch.timer);
+      Object.assign(user.watch, { runId, polls: 0, open: new Set() });
+      if (user === current) showTraceHeader(user);
+      const tick = async () => {
+        let done = true;
+        try { done = await refreshTrace(user, runId); } catch { setTraceStatus(user, "trace unavailable", false); }
+        if (done || ++user.watch.polls >= POLL_LIMIT) clearInterval(user.watch.timer);
+      };
+      user.watch.timer = setInterval(tick, POLL_MS);
+      tick();
+    }
+
+    async function errorText(res) {
+      try { const body = await res.json(); return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail); }
+      catch { return `${res.status} ${res.statusText}`; }
+    }
+
+    async function send(event) {
+      event.preventDefault();
+      const input = $("message");
+      const text = input.value.trim();
+      if (!text || !current || current.pending) return;
+      input.value = "";
+      await sendText(current, text);
+      input.focus();
+    }
+
+    async function sendText(user, text, confirm = null) {
+      user.pending = true;
+      if (user === current) $("send").disabled = true;
+      addMessage(user, "user", text);
+      const loader = showLoader(user);
+      const runId = newRunId();
+      watchRun(user, runId);
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, user_id: user.userId, session_id: user.sessionId, run_id: runId, confirm }),
+        });
+        if (!res.ok) throw new Error(await errorText(res));
+        const reply = await res.json();
+        Object.assign(user, { sessionId: reply.session_id, phase: reply.phase });
+        if (user === current) showSession();
+        loader.remove();
+        addMessage(user, "agent", reply.reply, { runId: reply.run_id, actions: actionsFor(reply) });
+      } catch (err) {
+        loader.remove();
+        addMessage(user, "error", `Request failed: ${err.message}`);
+      } finally {
+        loader.remove();
+        user.pending = false;
+        if (user === current) $("send").disabled = false;
+      }
+    }
+
+    async function pollOutbox(user) {
+      try {
+        const params = new URLSearchParams({ user_id: user.userId, after_id: user.outboxAfter });
+        const res = await fetch(`/outbox?${params}`);
+        if (!res.ok) return;
+        for (const message of (await res.json()).messages) {
+          const payload = message.payload || {};
+          if (payload.session_id && payload.session_id !== user.sessionId) {
+            // A proactive task lives on its own session: replies go there.
+            Object.assign(user, { sessionId: payload.session_id, phase: "presenting" });
+            if (user === current) showSession();
+          }
+          addMessage(user, "agent", message.body, { tag: "proactive", runId: payload.run_id, actions: actionsFor(payload) });
+          user.outboxAfter = Math.max(user.outboxAfter, message.message_id);
+        }
+      } catch { /* the next poll retries */ }
+    }
+
+    const pollOutboxes = () => { for (const user of users.values()) pollOutbox(user); };
+
+    $("composer").addEventListener("submit", send);
+    $("message").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); }
+    });
+    $("user-picker").addEventListener("change", (e) => pick(e.target.value));
+    $("simulate-cancel").addEventListener("click", async () => {
+      const user = current;
+      if (!user) return;
+      const res = await fetch("/simulate/provider_cancelled", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.userId }),
+      });
+      const body = res.ok ? await res.json() : null;
+      addMessage(user, "demo", body
+        ? `Demo: the provider cancelled booking ${body.event.booking_id}. The agent should notice within a few seconds.`
+        : `Demo: ${await errorText(res)}`);
+    });
+    $("new-chat").addEventListener("click", () => {
+      if (!current) return;
+      Object.assign(current, { sessionId: newSessionId(), phase: null });
+      current.log.replaceChildren();
+      showSession();
+      $("message").focus();
+    });
+
+    (async function start() {
+      try {
+        const res = await fetch("/demo/users");
+        if (!res.ok) throw new Error(await errorText(res));
+        for (const { user_id, name } of (await res.json()).users) addUser(user_id, name);
+      } catch (err) {
+        $("session-meta").textContent = `could not load users: ${err.message}`;
+        return;
+      }
+      if (!users.size) { $("session-meta").textContent = "no users to chat as"; return; }
+      pick(users.keys().next().value);
+      pollOutboxes();
+      setInterval(pollOutboxes, OUTBOX_MS);
+    })();
+  </script>
+</body>
+</html>

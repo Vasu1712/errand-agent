@@ -1,0 +1,30 @@
+name: tool_errors_on_reads
+title: Unreadable JSON, a wrong-shaped reply and a crash from read tools; clear messages, no crash, errors traced
+covers: [tool_failure]
+world: book_succeeds
+world_overrides:
+  faults:
+    - {tool: get_provider, call: 1, kind: malformed_json}
+    - {tool: get_provider, call: 2, kind: wrong_type}
+    - {tool: search_providers, call: 2, kind: exception}
+user: u_broken
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+    - {when: weekday, when_weekday: saturday}
+  pick:
+    - {action: change_details, option_id: null}
+decider:
+  intent: [book]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."  # two review lookups break
+  - say: "Saturday instead, please."  # the new search breaks
+expect:
+  - check: tool_errors
+    tools: [get_provider, get_provider, search_providers]
+  - check: phases  # the day changed, so the task is collecting again when the search breaks
+    phases: [presenting, collecting]
+    outcomes: [ok, stopped]
+  - check: stops
+    tool: 1
+  - check: quiet

@@ -1,0 +1,7 @@
+# For the recorded demo: the first booking's book() call times out although the booking went
+# through, so the agent has to settle it from get_booking_status. Later calls follow the split.
+description: The first book() times out after the booking was made.
+book_forced: [timeout_booked]
+quote_drift_probability: 0.0
+cancel_fail_first: 1
+reschedule_conflicts: ["10:00"]

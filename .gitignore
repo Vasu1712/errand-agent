@@ -218,3 +218,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Errand Agent ---
+# Local SQLite databases (agent DB, mock-world DB) and their WAL/journal files
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+# Per-run traces are local output; curated traces for the write-up go in docs/
+traces/*.jsonl
+!traces/timeout_after_success.jsonl
+# Written by every eval run (make eval)
+traces/eval/
+.DS_Store
+/docs/SPECS.md
+/graphify-out
+/errand-agent-chat-transcript.txt
+/reports

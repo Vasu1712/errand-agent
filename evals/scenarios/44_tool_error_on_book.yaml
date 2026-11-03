@@ -1,0 +1,35 @@
+name: tool_error_on_book
+title: book() goes through but its reply is unreadable; treated as unknown, verified, booked once
+covers: [tool_failure, verification, idempotency]
+world: book_succeeds
+world_overrides:
+  faults:
+    - {tool: book, call: 1, kind: malformed_json, after: true}
+user: u_garbled
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: tool_errors
+    tools: [book]
+  - check: sequence
+    step: 3
+    tools: [hold_slot, book, get_booking_status]
+  - check: phases
+    phases: [presenting, awaiting_approval, done]
+    outcomes: [ok, ok, ok]
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [1]
+  - check: booked
+    count: 1
+  - check: claims
+    book: 1

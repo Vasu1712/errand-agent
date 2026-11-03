@@ -1,0 +1,6 @@
+# proactive_provider_cancellation replayed from a live run: Vega rates the replacements' reviews.
+extends: proactive_provider_cancellation
+name: proactive_provider_cancellation_recorded
+title: Provider cancellation and fresh-yes rebooking, replayed from live Vega
+covers: [proactive, approval, live_recording]
+recording: proactive_provider_cancellation

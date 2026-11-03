@@ -1,0 +1,20 @@
+name: proactive_past_or_cancelled_ignored
+title: Provider cancellations for a past visit and an already-cancelled booking are logged and ignored
+covers: [proactive]
+world: book_succeeds
+user: u_quiet
+bookings:
+  - {alias: past, provider: prov_ac_service_koramangala_1, start: "2026-10-20T10:00", status: completed}
+  - {alias: called_off, provider: prov_cleaning_koramangala_1, start: "2026-11-06T14:00", status: cancelled}
+steps:
+  - provider_cancels: {alias: past}
+  - provider_cancels: {alias: called_off}
+  - worker: tick
+expect:
+  - check: poller
+    ignore: 2
+    notify: 0
+  - check: outbox
+    kind: provider_cancelled
+    count: 0
+  - check: quiet

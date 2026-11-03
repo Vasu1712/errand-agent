@@ -1,0 +1,33 @@
+name: same_electrician_not_before_10
+title: Book the same electrician as last time, but not before 10 a.m.
+covers: [booking, conversation]
+world: book_succeeds
+user: u_sam
+bookings:
+  - {alias: earlier, provider: prov_electrician_koramangala_1, start: "2026-09-02T12:00", status: completed}
+  - {alias: last_time, provider: prov_electrician_koramangala_3, start: "2026-10-14T10:00", status: completed}
+model:
+  slot_patch:
+    - {service: electrician, same_provider_as_last_time: true, earliest_time: "10:00"}
+    - {when: this_week, no_budget_limit: true}
+decider:
+  intent: [book, book]
+  approval: ["yes"]
+steps:
+  - say: "Book the same electrician as last time, but not before 10 a.m."
+  - say: "Any day this week, no budget limit."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: slots
+    values: {provider_id: prov_electrician_koramangala_3, earliest_time: "10:00"}
+    sources: {provider_id: "booking:last_time", earliest_time: user}
+  - check: asked
+    slots: {date_from: 1, budget: 1}
+    questions: 1
+  - check: phases
+    phases: [collecting, presenting, awaiting_approval, done]
+  - check: booked
+    service: electrician
+    provider: prov_electrician_koramangala_3
+    min_hour: 10

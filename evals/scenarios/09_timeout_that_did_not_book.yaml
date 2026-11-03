@@ -1,0 +1,32 @@
+name: timeout_that_did_not_book
+title: book() times out and nothing was booked, so it is retried under the same key
+covers: [timeout, verification, idempotency]
+world: timeout_not_booked
+user: u_t2
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: sequence
+    step: 3
+    tools: [hold_slot, book, get_booking_status, book, get_booking_status]
+  - check: calls
+    tool: book
+    count: 2
+    same_key: true
+    failures: [timeout, null]
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [2]
+  - check: booked
+    service: plumber
+  - check: claims
+    book: 1

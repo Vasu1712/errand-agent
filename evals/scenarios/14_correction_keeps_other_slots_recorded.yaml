@@ -1,0 +1,8 @@
+# correction_keeps_other_slots replayed from a live run. Live Vega was unsure about the correction
+# (no at 0.765) and live Qwen copied the old details and invented a provider name; code kept only
+# the new day (docs/bugs.md #11).
+extends: correction_keeps_other_slots
+name: correction_keeps_other_slots_recorded
+title: A correction at the summary, replayed from live Qwen and Vega
+covers: [conversation, approval, live_recording]
+recording: correction_keeps_other_slots

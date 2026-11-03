@@ -1,0 +1,31 @@
+name: reschedule_slot_conflict
+title: The new slot conflicts at reschedule(); the next one is offered and needs a fresh yes
+covers: [reschedule, slot_conflict, approval]
+world: book_succeeds
+world_overrides: {reschedule_conflicts: ["10:00"]}
+user: u_demo
+seed_demo: true  # AC servicing on Thu 5 Nov at 10:00; earliest time 09:00
+model:
+  find_booking:
+    - {service: ac_service, when: weekday, when_weekday: saturday}
+decider:
+  intent: [reschedule]
+  approval: ["yes", "yes"]
+steps:
+  - say: "Move my AC servicing to Saturday."  # closest slot: Saturday 10:00, which conflicts
+  - confirm: "Yes, go ahead."
+  - confirm: "Yes, go ahead."
+expect:
+  - check: phases
+    phases: [awaiting_approval, awaiting_approval, done]
+  - check: ledger
+    op: reschedule
+    statuses: [not_booked, confirmed]
+  - check: approval_trail
+    trail: [{status: consumed}, {status: consumed}]
+  - check: booking
+    select: {service: ac_service}
+    status: confirmed
+    day: "2026-11-07"
+    hour: 12
+    same_provider: true

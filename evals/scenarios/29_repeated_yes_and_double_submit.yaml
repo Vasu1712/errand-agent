@@ -1,0 +1,40 @@
+name: repeated_yes_and_double_submit
+title: Repeated yes, a double-submitted Confirm and a yes after booking make exactly one booking
+covers: [repeated_confirmation, idempotency]
+world: book_succeeds
+user: u_twice
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+  smalltalk:
+    - {text: "Happy to help."}
+decider:
+  # After the booking a bare yes is small talk; "Yes, book it." alone is too vague to act on.
+  # The resubmitted Confirm never reaches Vega: code answers it from the ledger.
+  intent: [book, smalltalk, {choice: book, confidence: 0.6}]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+  - confirm: "Yes, go ahead."
+    approval_from_step: 2  # the same Confirm, submitted again
+  - say: "yes"
+  - say: "Yes, book it."
+expect:
+  - check: calls
+    tool: book
+    count: 1
+  - check: booked
+    count: 1
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+  - check: claims
+    book: 1
+  - check: approval_trail
+    trail: [{status: consumed}]
+  - check: trace_event  # the second Confirm was told where the booking stands, from the ledger
+    event: already_done
+    count: 1
+    data: {status: confirmed}

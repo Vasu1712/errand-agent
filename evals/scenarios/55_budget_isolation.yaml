@@ -1,0 +1,61 @@
+name: budget_isolation
+title: One user exhausts the tool limit and then the wall clock; another user's concurrent runs keep their own budgets
+covers: [concurrency, limits, isolation]
+world: timeout_after_success
+world_overrides: {timeout_latency_s: 40, cancel_fail_first: 0}
+user: u_demo
+seed_demo: true  # u_ravi has an upcoming electrician visit
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+  find_booking:
+    - {service: electrician}
+decider:
+  intent: {default: book, match: [{contains: "Cancel", choice: cancel}]}
+  approval: {default: "yes"}
+steps:
+  - configure: {max_tool_calls: 7, reserved_tool_calls: 5}  # two free calls per run
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_demo}  # needs five
+      - {say: "Cancel my electrician appointment.", user: u_ravi}  # needs one
+  - configure: {max_tool_calls: 12, reserved_tool_calls: 5}
+  - {say: "continue", user: u_demo}
+  - {say: "1", user: u_demo}
+  # The demo user's book() hangs for 40 s (cut at 30) while Ravi's cancel waits its turn.
+  - together:
+      - {confirm: "Yes, go ahead.", user: u_demo}
+      - {confirm: "Yes, go ahead.", user: u_ravi}
+    gate: {at: [book, cancel], order: [u_demo, u_ravi]}
+  - worker: tick
+expect:
+  - check: stops
+    user: u_demo
+    "budget:tool_calls": 1
+  - check: stops
+    user: u_ravi
+  - check: run_budget
+    user: u_ravi
+    step: 2
+    max_tool_calls: 2
+  - check: run_budget
+    user: u_demo
+    step: 6
+    elapsed_s: 30.0
+  - check: run_budget
+    user: u_ravi
+    step: 6
+    max_elapsed_s: 1
+  - check: phases
+    user: u_ravi
+    phases: [awaiting_approval, done]
+  - check: phases
+    user: u_demo
+    phases: [collecting, presenting, awaiting_approval, unconfirmed]
+    outcomes: [stopped, ok, ok, ok]
+  - check: booking
+    user: u_ravi
+    select: {service: electrician}
+    status: cancelled
+  - check: booked
+    user: u_demo
+    count: 1

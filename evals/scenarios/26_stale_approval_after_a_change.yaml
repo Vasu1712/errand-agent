@@ -1,0 +1,34 @@
+name: stale_approval_after_a_change
+title: The slot changes after an approval; confirming the old summary matches nothing and books nothing
+covers: [approval, repeated_confirmation]
+world: book_succeeds
+user: u_stale
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+    - {when: weekday, when_weekday: saturday}
+decider:
+  intent: [book, book]
+  # The third "yes" is what a careless reading of the stray "1" would say; code refuses it.
+  approval: ["no", "yes", "yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"  # summary for Tuesday
+  - say: "Actually, make it Saturday instead."  # straight back as a summary for Saturday
+  - say: "1"  # out of habit: a number at a summary is not a yes (docs/bugs.md #25)
+  - confirm: "Yes, go ahead."
+    approval_from_step: 2  # the Confirm button still showing under Tuesday's summary
+  - confirm: "Yes, go ahead."  # the one under Saturday's
+expect:
+  - check: sequence
+    step: 4
+    tools: []
+  - check: sequence
+    step: 5
+    tools: []
+  - check: phases
+    phases: [presenting, awaiting_approval, awaiting_approval, awaiting_approval, awaiting_approval, done]
+  - check: approval_trail
+    trail: [{status: invalidated}, {status: consumed}]
+  - check: booked
+    day: "2026-11-07"

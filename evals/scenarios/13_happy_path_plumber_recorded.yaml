@@ -1,0 +1,7 @@
+# The same user and checks as happy_path_plumber, with the model replies and Vega decisions
+# replayed from a live qwen2.5:7b + Vega run (make record SCENARIOS=happy_path_plumber).
+extends: happy_path_plumber
+name: happy_path_plumber_recorded
+title: Happy-path plumber booking, replayed from live Qwen and Vega
+covers: [booking, memory, approval, verification, live_recording]
+recording: happy_path_plumber

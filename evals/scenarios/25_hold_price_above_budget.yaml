@@ -1,0 +1,30 @@
+name: hold_price_above_budget
+title: The hold quotes above the budget; the option is dropped, never booked or put up for approval
+covers: [approval, price_change, budget]
+world: book_succeeds
+world_overrides: {quote_delta_inr: {prov_plumber_koramangala_5: 2000}}
+user: u_budget
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes", "yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"  # FlowRight at ₹700; the hold quotes ₹2,700
+  - confirm: "Yes, go ahead."
+  - say: "1"  # the best of what is left
+  - confirm: "Yes, go ahead."
+expect:
+  - check: approval_trail
+    trail: [{status: invalidated, price: 700}, {status: consumed}]
+    max_price: 1500
+  - check: offered
+    step: 3
+    excludes: [prov_plumber_koramangala_5]
+  - check: booked
+    not_provider: prov_plumber_koramangala_5
+    max_price: 1500
+  - check: phases
+    phases: [presenting, awaiting_approval, presenting, awaiting_approval, done]

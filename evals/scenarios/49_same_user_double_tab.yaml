@@ -1,0 +1,36 @@
+name: same_user_double_tab
+title: One user, one approval, two simultaneous yeses from two tabs; one booking, and the second reply says it's booked
+covers: [concurrency, repeated_confirmation, idempotency]
+world: book_succeeds
+user: u_demo
+seed_demo: true
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+decider:
+  intent: {default: book}
+  approval: {default: "yes"}
+steps:
+  - say: "Find a plumber for the kitchen sink this week."
+  - say: "1"
+  - together:  # the same Confirm, from two tabs of the same session, at the same moment
+      - {confirm: "Yes, go ahead."}
+      - {confirm: "Yes, go ahead."}
+    gate: {at: [lock], order: [1, 2]}
+expect:
+  - check: booked
+    count: 1
+  - check: calls
+    tool: book
+    count: 1
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+  - check: claims
+    book: 1
+  - check: phases
+    phases: [presenting, awaiting_approval, done, done]
+  - check: trace_event  # the second tab was told the current state, read from the ledger
+    event: already_done
+    count: 1
+    data: {status: confirmed}

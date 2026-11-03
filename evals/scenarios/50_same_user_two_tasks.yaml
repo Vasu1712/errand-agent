@@ -1,0 +1,46 @@
+name: same_user_two_tasks
+title: One user starts two errands in two sessions at once; neither task's state leaks into the other
+covers: [concurrency, isolation]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # cleaning booked for Sun 8 Nov
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+  find_booking:
+    - {service: cleaning}
+decider:
+  intent: {default: book, match: [{contains: "Cancel", choice: cancel}]}
+  approval: {default: "yes"}
+steps:
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", session: s1}
+      - {say: "Cancel my cleaning appointment.", session: s2}
+  - together:
+      - {say: "1", session: s1}
+      - {confirm: "Yes, go ahead.", session: s2}
+  - {confirm: "Yes, go ahead.", session: s1}
+expect:
+  - check: tasks
+    session: s1
+    intents: [book]
+  - check: tasks
+    session: s2
+    intents: [cancel]
+  - check: slots
+    thread: s1
+    values: {service: plumber, date_from: "2026-11-03"}
+  - check: slots
+    thread: s2
+    values: {service: cleaning, date_from: null}
+  - check: phases
+    session: s1
+    phases: [presenting, awaiting_approval, done]
+  - check: phases
+    session: s2
+    phases: [awaiting_approval, done]
+  - check: booked
+    service: plumber
+  - check: booking
+    select: {service: cleaning}
+    status: cancelled

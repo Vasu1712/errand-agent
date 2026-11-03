@@ -1,0 +1,33 @@
+name: missing_slots_asked_once
+title: Missing details are asked for once, in one question
+covers: [conversation, booking]
+world: book_succeeds
+user: u_new  # nothing stored, so area, day and budget are all missing
+model:
+  slot_patch:
+    - {service: plumber}
+    - {area: Koramangala, when: tomorrow, time_window: morning}
+decider:
+  intent: [book, book]
+  approval: ["yes"]
+steps:
+  - say: "I need a plumber."
+  - say: "Koramangala, tomorrow morning."  # no budget: it was asked once and isn't asked again
+  - say: "2"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: asked
+    slots: {area: 1, date_from: 1, budget: 1}
+    questions: 1
+  - check: phases
+    phases: [collecting, presenting, awaiting_approval, done]
+  - check: search
+    service: plumber
+    area: Koramangala
+  - check: slots
+    sources: {service: user, area: user, date_from: user, time_window: user}
+  - check: booked
+    service: plumber
+    area: Koramangala
+    day: "2026-11-04"
+    max_hour: 12

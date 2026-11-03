@@ -1,0 +1,7 @@
+# For evals: book() succeeds (twice, for scenarios that book again), quotes match the listing,
+# the first cancel per booking returns a 503, and no reschedule slot conflicts.
+description: Bookings succeed; prices hold; the first cancel call fails with a 503.
+book_forced: [success, success]
+quote_drift_probability: 0.0
+cancel_fail_first: 1
+reschedule_conflicts: []

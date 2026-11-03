@@ -1,0 +1,28 @@
+name: limit_model_calls
+title: The model-call limit stops a turn cleanly; "continue" resumes with the stopped message intact
+covers: [limits, conversation]
+world: book_succeeds
+user: u_limit1
+settings: {max_model_calls: 1}
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, no_budget_limit: true}
+    - {when: weekday, when_weekday: saturday}
+  pick:
+    - {action: change_details, option_id: null}
+decider:
+  intent: [book]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, no budget limit."
+  - say: "Saturday would be better."  # reading the pick, then the change: two model calls, one allowed
+  - say: "continue"
+expect:
+  - check: stops
+    "budget:model_calls": 1
+  - check: phases
+    phases: [presenting, presenting, presenting]
+    outcomes: [ok, stopped, ok]
+  - check: search
+    step: 3
+    days: ["2026-11-07", "2026-11-07"]
+  - check: quiet

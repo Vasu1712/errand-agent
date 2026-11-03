@@ -1,0 +1,33 @@
+name: reschedule_which_of_several
+title: '"Move my AC servicing" with two upcoming AC bookings: the agent asks which one'
+covers: [reschedule, understanding]
+world: book_succeeds
+user: u_two_ac
+bookings:
+  - {alias: thursday, provider: prov_ac_service_koramangala_1, start: "2026-11-05T10:00"}
+  - {alias: monday, provider: prov_ac_service_koramangala_2, start: "2026-11-09T12:00"}
+model:
+  find_booking:
+    - {service: ac_service, when: weekday, when_weekday: saturday}
+decider:
+  intent: [reschedule, {choice: book, confidence: 0.41}]  # "2" isn't a request of its own
+  approval: ["yes"]
+steps:
+  - say: "Move my AC servicing to Saturday."
+  - say: "2"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: phases
+    phases: [choosing_booking, awaiting_approval, done]
+  - check: booking
+    select: monday
+    status: confirmed
+    day: "2026-11-07"
+    same_provider: true
+  - check: booking
+    select: thursday
+    status: confirmed
+    day: "2026-11-05"
+  - check: calls
+    tool: reschedule
+    count: 1

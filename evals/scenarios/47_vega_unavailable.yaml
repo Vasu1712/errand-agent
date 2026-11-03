@@ -1,0 +1,30 @@
+name: vega_unavailable
+title: Vega fails, routing a request and then reading a yes; a clear message, nothing booked until it answers
+covers: [model_failure, approval]
+world: book_succeeds
+user: u_no_vega
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  # The resumed yes (step 5) is a fresh run, routed first: as small talk, unsure.
+  intent: [{error: unavailable}, book, {choice: smalltalk, confidence: 0.5}]
+  approval: [{error: unavailable}, "yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."  # Vega fails reading it
+  - confirm: "Yes, go ahead."
+    approval_from_step: 3  # the summary's Confirm, pressed again
+expect:
+  - check: stops
+    decider: 2
+  - check: phases
+    phases: [idle, presenting, awaiting_approval, awaiting_approval, done]
+    outcomes: [stopped, ok, ok, stopped, ok]
+  - check: sequence
+    step: 4
+    tools: []
+  - check: booked
+    count: 1

@@ -1,0 +1,33 @@
+name: area_from_explicit_memory
+title: The saved area is used without asking; superseded and unconfirmed facts are not
+covers: [memory, context]
+world: book_succeeds
+user: u_demo
+# Koramangala superseded HSR Layout; the electrician technician is an unconfirmed guess.
+seed_demo: true
+model:
+  slot_patch:
+    - {service: electrician, when: this_week, no_budget_limit: true, problem: faulty switch}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find an electrician for a faulty switch this week, no budget limit."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: asked
+    none: true
+  - check: search
+    service: electrician
+    area: Koramangala
+  - check: slots
+    values: {area: Koramangala, earliest_time: "10:00"}
+    sources: {area: "memory:preferred_area", earliest_time: "memory:earliest_time"}
+  - check: not_sent
+    after_step: 0
+    values: ["HSR Layout"]
+  - check: booked
+    service: electrician
+    area: Koramangala
+    min_hour: 10  # the saved earliest time for electrical work

@@ -1,0 +1,150 @@
+{
+ "scenario": "memory_inspect_correct_forget",
+ "recorded_at": "2026-11-03T16:01:34.769883+05:30",
+ "model": "qwen2.5:7b",
+ "decider": "VegaDecider",
+ "model_calls": [
+  {
+   "purpose": "memory_command",
+   "schema_name": "MemoryCommand",
+   "request_digest": "8033e9cf9ac0be6c9994c800144338d0e286365a80479296415cb68181d1f7f9",
+   "model": "qwen2.5:7b",
+   "raw": "{\n  \"op\": \"inspect\",\n  \"key\": null,\n  \"value\": null,\n  \"service\": null\n}",
+   "usage": {
+    "input_tokens": 189,
+    "output_tokens": 28
+   },
+   "latency_ms": 2021.8686668667942,
+   "error": null,
+   "error_message": null
+  },
+  {
+   "purpose": "memory_command",
+   "schema_name": "MemoryCommand",
+   "request_digest": "dbc396f03cdd54eec0134ee65194d874a6e3b7bd10c8717a235df269dc0a2485",
+   "model": "qwen2.5:7b",
+   "raw": "{\"op\":\"remember\",\"key\":\"earliest_time\",\"value\":\"08:00\"}",
+   "usage": {
+    "input_tokens": 193,
+    "output_tokens": 20
+   },
+   "latency_ms": 1034.337375080213,
+   "error": null,
+   "error_message": null
+  },
+  {
+   "purpose": "memory_command",
+   "schema_name": "MemoryCommand",
+   "request_digest": "8fb2ab46c72dea17a3e8db68d9db674a81575750f8999d433371a1a26cdbcb0c",
+   "model": "qwen2.5:7b",
+   "raw": "{ \"op\": \"forget\", \"key\": \"preferred_area\" }",
+   "usage": {
+    "input_tokens": 187,
+    "output_tokens": 16
+   },
+   "latency_ms": 971.4916250668466,
+   "error": null,
+   "error_message": null
+  },
+  {
+   "purpose": "slot_patch",
+   "schema_name": "SlotPatch",
+   "request_digest": "6da499e2cb36c46f8770972718a7d22eaa3741cd4e7f4a8e398dbb471cb1d9f4",
+   "model": "qwen2.5:7b",
+   "raw": "{\n  \"service\": \"plumber\",\n  \"when\": \"this_week\",\n  \"no_budget_limit\": true,\n  \"same_provider_as_last_time\": null,\n  \"provider_name\": null,\n  \"problem\": null\n}",
+   "usage": {
+    "input_tokens": 1439,
+    "output_tokens": 50
+   },
+   "latency_ms": 6525.885124923661,
+   "error": null,
+   "error_message": null
+  }
+ ],
+ "decisions": [
+  {
+   "question_id": "intent",
+   "text_digest": "94eed1f8f9d91a9ae0437169ace8a92afbbc75625ca4dfec5dfa7e0431109aa3",
+   "text": "What do you remember about me?",
+   "decision": {
+    "question_id": "intent",
+    "choice": "memory_command",
+    "confidence": 0.9622314904125192,
+    "probs": {
+     "book": 0.01083053551639299,
+     "reschedule": 0.008979313204051863,
+     "cancel": 0.008979356044886465,
+     "memory_command": 0.9622314904125192,
+     "smalltalk": 0.008979304822149441
+    },
+    "readout": "ttt",
+    "abstain": false,
+    "latency_ms": 102.30908403173089
+   },
+   "error": null
+  },
+  {
+   "question_id": "intent",
+   "text_digest": "c5741dc54ca045724e505ca0564f30229b21e3a4944da812da9f18f67d2f55bf",
+   "text": "Actually, my earliest start time is 8 am.",
+   "decision": {
+    "question_id": "intent",
+    "choice": "memory_command",
+    "confidence": 0.8609125111610405,
+    "probs": {
+     "book": 0.03378642993572445,
+     "reschedule": 0.026979163587287133,
+     "cancel": 0.04042214106424165,
+     "memory_command": 0.8609125111610405,
+     "smalltalk": 0.03789975425170629
+    },
+    "readout": "ttt",
+    "abstain": false,
+    "latency_ms": 1157.973833847791
+   },
+   "error": null
+  },
+  {
+   "question_id": "intent",
+   "text_digest": "9a2cf6f69452a68998b74df0aaf626dfb1ff49d9a5adc809c6065eea045a5f73",
+   "text": "Forget my preferred area.",
+   "decision": {
+    "question_id": "intent",
+    "choice": "memory_command",
+    "confidence": 0.928801514151008,
+    "probs": {
+     "book": 0.019840742324620412,
+     "reschedule": 0.019945165941158437,
+     "cancel": 0.010801745079900173,
+     "memory_command": 0.928801514151008,
+     "smalltalk": 0.020610832503313012
+    },
+    "readout": "ttt",
+    "abstain": false,
+    "latency_ms": 129.056666046381
+   },
+   "error": null
+  },
+  {
+   "question_id": "intent",
+   "text_digest": "35b669542b04c0a4f90ee57d42536f51509b5e3c63829fa0b8fe123e6232deba",
+   "text": "Find a plumber this week, no budget limit.",
+   "decision": {
+    "question_id": "intent",
+    "choice": "book",
+    "confidence": 0.9060806505463926,
+    "probs": {
+     "book": 0.9060806505463926,
+     "reschedule": 0.027585034804627744,
+     "cancel": 0.024832687925090715,
+     "memory_command": 0.015487520739144821,
+     "smalltalk": 0.026014105984744067
+    },
+    "readout": "ttt",
+    "abstain": false,
+    "latency_ms": 93.06083410046995
+   },
+   "error": null
+  }
+ ]
+}

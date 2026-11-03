@@ -1,0 +1,57 @@
+name: user_isolation
+title: Two users at once; neither one's facts, bookings, approvals or outbox appear in the other's context, results, trace or API answers
+covers: [concurrency, isolation]
+world: book_succeeds
+user: u_demo
+seed_demo: true
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+  memory_command:
+    - {op: inspect}
+    - {op: inspect}
+  find_booking:
+    - {service: electrician}
+decider:
+  intent:
+    default: book
+    match:
+      - {contains: "remember", choice: memory_command}
+      - {contains: "Cancel", choice: cancel}
+  approval: {default: "yes"}
+steps:
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_demo}
+      - {say: "What do you remember about me?", user: u_ravi}
+  - {say: "1", user: u_demo}
+  - {confirm: "Yes, go ahead.", user: u_demo}
+  - provider_cancels: {service: cleaning, user: u_demo}  # an outbox message for u_demo only
+  - worker: tick
+  - together:
+      - {say: "Cancel my electrician appointment.", user: u_ravi}
+      - {say: "What do you remember about me?", user: u_demo}
+expect:
+  - check: api_isolation
+    user: u_ravi
+    other: u_demo
+  - check: api_isolation
+    user: u_demo
+    other: u_ravi
+  - check: outbox
+    user: u_ravi
+    kind: provider_cancelled
+    count: 0
+  - check: outbox
+    user: u_demo
+    kind: provider_cancelled
+    count: 1
+  - check: booked
+    user: u_demo
+    count: 1
+  - check: context  # Ravi's memory call got his own facts, not the demo user's Koramangala ones
+    user: u_ravi
+    includes: [preferred_area]
+  - check: not_sent
+    user: u_ravi
+    after_step: 0
+    values: [Koramangala]

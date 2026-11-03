@@ -1,0 +1,32 @@
+name: limit_wall_clock_booking_in_flight
+title: The provider outlasts the 30 s turn; the booking in flight is not reported, then settled later
+covers: [limits, timeout_after_success, verification]
+world: timeout_after_success
+world_overrides: {timeout_latency_s: 40}
+user: u_limit3
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+  - worker: tick
+expect:
+  - check: phases
+    phases: [presenting, awaiting_approval, unconfirmed]
+  - check: sequence
+    step: 3
+    tools: [hold_slot, book]
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [1]
+  - check: outbox
+    kind: reconciled
+    count: 1
+  - check: booked
+    count: 1

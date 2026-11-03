@@ -1,0 +1,51 @@
+name: forget_isolation
+title: One user forgets a fact another user also has (same key and value); the other keeps it and it still reaches only their context
+covers: [concurrency, memory, isolation]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # both u_demo and u_asha: preferred area Koramangala
+model:
+  memory_command:
+    - {op: forget, key: preferred_area}
+    - {op: inspect}
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+    - {service: plumber, when: this_week, problem: kitchen sink}
+decider:
+  intent:
+    default: book
+    match:
+      - {contains: "Forget", choice: memory_command}
+      - {contains: "remember", choice: memory_command}
+  approval: {default: "yes"}
+steps:
+  - together:
+      - {say: "Forget my preferred area.", user: u_demo}
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_asha}
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_demo}
+      - {say: "What do you remember about me?", user: u_asha, session: s2}
+expect:
+  - check: memory
+    user: u_demo
+    facts: [{key: preferred_area, status: forgotten}]
+  - check: memory
+    user: u_asha
+    facts: [{key: preferred_area, value: Koramangala, source: explicit}]
+  - check: search
+    user: u_asha
+    area: Koramangala
+  - check: context
+    user: u_asha
+    step: 2
+    includes: [preferred_area]
+  - check: context
+    user: u_demo
+    after_step: 1
+    excludes: [preferred_area]
+  - check: asked
+    user: u_demo
+    slots: {area: 1}
+  - check: asked
+    user: u_asha
+    none: true

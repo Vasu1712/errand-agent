@@ -1,0 +1,35 @@
+name: restart_before_book_was_sent
+title: The process dies after the ledger write, before book() reached the provider; one booking after reconciling
+covers: [restart, idempotency]
+world: book_succeeds
+world_overrides: {book_forced: [crash_before_send, success]}
+user: u_crash1
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+  smalltalk:
+    - {text: "Happy to help."}
+decider:
+  intent: [book, smalltalk]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+    expect_crash: true
+  - restart: true  # a new process on the same files; the startup reconciler runs
+  - say: "Did it go through?"
+expect:
+  - check: booked
+    count: 1
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+    attempts: [2]
+  - check: outbox
+    kind: reconciled
+    count: 1
+  - check: claims
+    book: 1
+  - check: phases
+    phases: [presenting, awaiting_approval, crashed, done]

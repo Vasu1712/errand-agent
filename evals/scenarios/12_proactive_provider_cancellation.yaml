@@ -1,0 +1,37 @@
+name: proactive_provider_cancellation
+title: A provider cancels; the agent notices unprompted, and rebooking needs a fresh yes
+covers: [proactive, approval]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # AC servicing booked for Thu 5 Nov, 10:00
+decider:
+  approval: ["yes"]
+steps:
+  - provider_cancels: {service: ac_service}
+  - worker: tick  # no user message: the poller notices and writes to the outbox
+  - say: "1"
+    thread: outbox
+  - confirm: "Yes, go ahead."
+  - worker: tick  # a second tick must not notify again
+expect:
+  - check: booking
+    select: {service: ac_service}
+    status: cancelled_by_provider
+  - check: outbox
+    kind: provider_cancelled
+    count: 1
+    has_options: true
+    new_thread: true
+  - check: quiet
+    kinds: [provider_event, proactive]
+  - check: phases
+    phases: [awaiting_approval, done]
+  - check: approvals
+    thread: outbox
+    requested_after_step: 2
+    consumed: 1
+  - check: booked
+    service: ac_service
+    not_provider: prov_ac_service_koramangala_1
+  - check: claims
+    book: 1

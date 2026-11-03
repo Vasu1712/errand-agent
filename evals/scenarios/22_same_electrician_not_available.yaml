@@ -1,0 +1,28 @@
+name: same_electrician_not_available
+title: '"Same electrician as last time" when they aren''t in the search results: no options, nothing held'
+covers: [booking, understanding]
+world: book_succeeds
+user: u_sam3
+memories:
+  - {key: preferred_area, value: Koramangala, source: explicit}
+bookings:  # last time it was an Indiranagar electrician, who doesn't cover Koramangala
+  - {alias: last_time, provider: prov_electrician_indiranagar_2, start: "2026-10-14T10:00", status: completed}
+model:
+  slot_patch:
+    - {service: electrician, same_provider_as_last_time: true, when: this_week, no_budget_limit: true}
+decider:
+  intent: [book]
+steps:
+  - say: "Book the same electrician as last time, this week, no budget limit."
+expect:
+  - check: slots
+    values: {provider_id: prov_electrician_indiranagar_2, area: Koramangala}
+  - check: search
+    area: Koramangala
+  - check: offered
+    step: 1
+    count: 0
+  - check: phases
+    phases: [collecting]
+    outcomes: [ok]
+  - check: quiet

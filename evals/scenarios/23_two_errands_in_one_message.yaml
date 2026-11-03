@@ -1,0 +1,39 @@
+name: two_errands_in_one_message
+title: Two errands in one message; one becomes the task, the other is queued, acknowledged and done next
+covers: [understanding, booking, cancel]
+world: book_succeeds
+user: u_demo
+seed_demo: true  # cleaning booked for Sun 8 Nov
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: tomorrow, time_window: morning, no_budget_limit: true}
+  find_booking:
+    - {service: cleaning}
+decider:
+  # Live Vega reads the whole message as book at 0.733 (under the threshold), but each errand
+  # alone as book at 0.945 and cancel at 0.985.
+  intent: [book, cancel]
+  approval: ["yes", "yes"]
+steps:
+  - say: "Find a plumber in Koramangala tomorrow morning, no budget limit, and cancel my cleaning appointment."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+  - say: "next"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: tasks
+    intents: [book, cancel]
+    queued: [cancel]
+  - check: phases
+    phases: [presenting, awaiting_approval, done, awaiting_approval, done]
+  - check: booked
+    service: plumber
+    day: "2026-11-04"
+  - check: booking
+    select: {service: cleaning}
+    status: cancelled
+  - check: approval_trail
+    trail: [{status: consumed}, {status: consumed}]
+  - check: claims
+    book: 1
+    cancel: 1

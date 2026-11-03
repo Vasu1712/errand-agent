@@ -1,0 +1,64 @@
+name: restart_under_load
+title: The process dies with two users' bookings in flight; after restart the reconciler settles both, one booking each
+covers: [concurrency, restart, idempotency]
+world: book_succeeds
+# The first book() commits and dies; the second dies before it reaches the provider.
+world_overrides: {book_forced: [crash_after_commit, crash_before_send, success]}
+user: u_demo
+seed_demo: true
+model:
+  slot_patch:
+    - {service: plumber, when: this_week, problem: kitchen sink}
+    - {service: plumber, when: this_week, problem: kitchen sink}
+  smalltalk:
+    - {text: "Happy to help."}
+    - {text: "Happy to help."}
+decider:
+  intent: {default: book, match: [{contains: "go through", choice: smalltalk}]}
+  approval: {default: "yes"}
+steps:
+  - together:
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_demo}
+      - {say: "Find a plumber for the kitchen sink this week.", user: u_asha}
+  - together:  # different options, so they don't compete for one slot
+      - {say: "2", user: u_demo}
+      - {say: "1", user: u_asha}
+  - together:
+      - {confirm: "Yes, go ahead.", user: u_demo, expect_crash: true}
+      - {confirm: "Yes, go ahead.", user: u_asha, expect_crash: true}
+    gate: {at: [book], order: [u_asha, u_demo]}
+  - restart: true  # a new process on the same files; the startup reconciler runs
+  - together:
+      - {say: "Did it go through?", user: u_demo}
+      - {say: "Did it go through?", user: u_asha}
+expect:
+  - check: booked
+    user: u_asha
+    count: 1
+  - check: booked
+    user: u_demo
+    count: 1
+  - check: ledger
+    user: u_asha
+    op: book
+    statuses: [confirmed]
+    attempts: [1]
+  - check: ledger
+    user: u_demo
+    op: book
+    statuses: [confirmed]
+    attempts: [2]
+  - check: outbox
+    user: u_asha
+    kind: reconciled
+    count: 1
+  - check: outbox
+    user: u_demo
+    kind: reconciled
+    count: 1
+  - check: claims
+    user: u_demo
+    book: 1
+  - check: claims
+    user: u_asha
+    book: 1

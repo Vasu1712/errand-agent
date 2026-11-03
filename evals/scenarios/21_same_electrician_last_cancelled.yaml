@@ -1,0 +1,27 @@
+name: same_electrician_last_cancelled
+title: '"Same electrician as last time" when the last booking was cancelled: the last one who came'
+covers: [booking, understanding]
+world: book_succeeds
+user: u_sam2
+bookings:
+  - {alias: came, provider: prov_electrician_koramangala_3, start: "2026-10-01T10:00", status: completed}
+  - {alias: called_off, provider: prov_electrician_koramangala_1, start: "2026-10-20T10:00", status: cancelled}
+model:
+  slot_patch:
+    - {service: electrician, same_provider_as_last_time: true, when: this_week, no_budget_limit: true}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Book the same electrician as last time, this week, no budget limit."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+expect:
+  - check: slots
+    values: {provider_id: prov_electrician_koramangala_3}
+    sources: {provider_id: "booking:came"}
+  - check: offered
+    step: 1
+    excludes: [prov_electrician_koramangala_1]
+  - check: booked
+    provider: prov_electrician_koramangala_3

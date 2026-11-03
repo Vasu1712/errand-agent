@@ -1,0 +1,22 @@
+name: reschedule_with_none_upcoming
+title: '"Move my AC servicing" with no upcoming AC booking: the agent says so and changes nothing'
+covers: [reschedule, understanding]
+world: book_succeeds
+user: u_no_ac
+bookings:
+  - {provider: prov_ac_service_koramangala_1, start: "2026-10-20T10:00", status: completed}
+  - {provider: prov_plumber_koramangala_1, start: "2026-11-05T10:00"}
+model:
+  find_booking:
+    - {service: ac_service, when: weekday, when_weekday: saturday}
+decider:
+  intent: [reschedule]
+steps:
+  - say: "Move my AC servicing to Saturday."
+expect:
+  - check: phases
+    phases: [failed]
+    outcomes: [ok]
+  - check: quiet
+  - check: approval_trail
+    trail: []

@@ -1,0 +1,43 @@
+name: correction_keeps_other_slots
+title: A correction changes one detail, keeps the rest and voids the proposal
+covers: [conversation, approval]
+world: book_succeeds
+user: u_fix
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+    - {when: weekday, when_weekday: saturday}
+decider:
+  intent: [book, book]
+  # Live Vega read the correction as "no" at 0.765, under the 0.85 threshold (docs/bugs.md #11).
+  approval: [{choice: "no", confidence: 0.765}, "yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  # Said while the summary waits for a yes. The same provider has a Saturday morning slot, so a
+  # new summary for it comes straight back, under a new approval (docs/bugs.md #25).
+  - say: "Actually, make it Saturday instead."
+  - confirm: "Yes, go ahead."
+expect:
+  - check: slots
+    changed_in_step: {step: 3, keys: [date_from, date_to]}
+    values:
+      service: plumber
+      area: Koramangala
+      time_window: morning
+      budget_max_inr: 1500
+      date_from: "2026-11-07"
+      date_to: "2026-11-07"
+  - check: phases
+    phases: [presenting, awaiting_approval, awaiting_approval, done]
+  - check: approvals
+    consumed: 1
+    invalidated: 1
+  - check: booked
+    service: plumber
+    area: Koramangala
+    day: "2026-11-07"
+    max_hour: 12
+    max_price: 1500
+  - check: asked
+    none: true

@@ -1,0 +1,36 @@
+name: timeout_and_status_unreachable
+title: book() times out and get_booking_status is down too; "not confirmed yet", reconciled later, never "booked" early
+covers: [timeout_after_success, tool_failure, verification]
+world: timeout_after_success
+world_overrides: {status_unavailable_calls: 4}  # one try and three backoffs
+user: u_dark
+model:
+  slot_patch:
+    - {service: plumber, area: Koramangala, when: this_week, time_window: morning, budget_max_inr: 1500}
+decider:
+  intent: [book]
+  approval: ["yes"]
+steps:
+  - say: "Find a plumber in Koramangala this week, mornings only, under ₹1,500."
+  - say: "1"
+  - confirm: "Yes, go ahead."
+  - worker: tick  # the reconciler asks again, and the status service answers
+expect:
+  - check: phases
+    phases: [presenting, awaiting_approval, unconfirmed]
+  - check: sequence
+    step: 3
+    tools: [hold_slot, book, get_booking_status, get_booking_status, get_booking_status, get_booking_status]
+  - check: calls
+    tool: book
+    count: 1
+  - check: ledger
+    op: book
+    statuses: [confirmed]
+  - check: outbox
+    kind: reconciled
+    count: 1
+  - check: claims
+    book: 1
+  - check: booked
+    count: 1

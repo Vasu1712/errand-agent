@@ -1,0 +1,29 @@
+name: context_budget_long_history
+title: 60+ memories and a long history under a tight cap; every manifest fits, with only relevant facts
+covers: [context, memory]
+world: book_succeeds
+user: u_demo
+seed_demo: true
+settings: {context_token_cap: 700}
+model:
+  smalltalk:
+    - {text: "Mostly plumbing, electrical work, AC servicing and cleaning."}
+  slot_patch:
+    - {service: plumber, when: this_week, time_window: morning, budget_max_inr: 1500, problem: kitchen tap}
+  pick:
+    - {action: none, option_id: null}
+  memory_command:
+    - {op: inspect}
+decider:
+  intent: [smalltalk, book, memory_command]
+steps:
+  - say: "Hi! What have I asked you about before?"
+  - say: "Find a plumber for my kitchen tap this week, mornings only, under ₹1,500."
+  - say: "What do you remember about me?"
+expect:
+  - check: context  # the five booking preferences at most, never pets, parking, ACs, ...
+    only: [preferred_area, earliest_time, preferred_time_window, budget_max_inr, technician]
+    includes: [preferred_area, earliest_time]
+    trimmed: true
+  - check: phases
+    phases: [idle, presenting, presenting]

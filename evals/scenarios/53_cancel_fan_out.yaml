@@ -1,0 +1,70 @@
+name: cancel_fan_out
+title: A provider cancels two users' bookings; each gets one message and their own replacement, and can't approve the other's
+covers: [concurrency, proactive, isolation, approval]
+world: book_succeeds
+world_overrides: {book_forced: [success, success]}
+user: u_demo
+seed_demo: true  # u_demo and u_asha both have upcoming cleanings with prov_cleaning_koramangala_1
+# The demo user's cleaning budget is ₹2,500 (seeded) and Asha's is her own, ₹3,000: both cover the
+# whole cleaning price band, so every world seed has a replacement for each of them to offer.
+memories:
+  - {user: u_asha, key: budget_max_inr, value: 3000, service: cleaning, evidence: "cleaning under ₹3,000"}
+decider:
+  intent:
+    default: book
+    match:  # a bare yes on a fresh session isn't a request of its own
+      - {contains: "Yes, go ahead", choice: book, confidence: 0.5}
+  approval: {default: "yes"}
+steps:
+  - provider_cancels: {provider: prov_cleaning_koramangala_1}
+  - worker: tick  # two events, two follow-ups, nobody prompted
+  - together:
+      - {say: "1", user: u_demo, thread: outbox}
+      - {say: "1", user: u_asha, thread: outbox}
+  # Asha sends the demo user's Confirm, on the demo user's replacement session id: as Asha, that
+  # is a different (empty) thread, and the approval isn't hers.
+  - {confirm: "Yes, go ahead.", user: u_asha, session_from: u_demo, approval_from_step: 3}
+  - together:
+      - {confirm: "Yes, go ahead.", user: u_demo}
+      - {confirm: "Yes, go ahead.", user: u_asha}
+expect:
+  - check: poller
+    notify: 2
+  - check: outbox
+    user: u_demo
+    kind: provider_cancelled
+    count: 1
+    has_options: true
+    new_thread: true
+  - check: outbox
+    user: u_asha
+    kind: provider_cancelled
+    count: 1
+    has_options: true
+    new_thread: true
+  - check: slots  # each replacement searches within that user's own budget (docs/bugs.md #23)
+    user: u_demo
+    thread: outbox
+    values: {budget_max_inr: 2500}
+    sources: {budget_max_inr: "memory:budget_max_inr"}
+  - check: slots
+    user: u_asha
+    thread: outbox
+    values: {budget_max_inr: 3000}
+    sources: {budget_max_inr: "memory:budget_max_inr"}
+  - check: quiet
+    step: 4
+  - check: booked
+    user: u_demo
+    count: 1
+    not_provider: prov_cleaning_koramangala_1
+  - check: booked
+    user: u_asha
+    count: 1
+    not_provider: prov_cleaning_koramangala_1
+  - check: approval_trail
+    user: u_demo
+    trail: [{status: consumed}]
+  - check: approval_trail
+    user: u_asha
+    trail: [{status: consumed}]
